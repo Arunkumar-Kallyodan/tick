@@ -181,6 +181,7 @@ final class Settings: ObservableObject {
     @Published var wrapUp: Bool { didSet { d.set(wrapUp, forKey: "wrapUp") } }
     @Published var wrapHour: Int { didSet { d.set(wrapHour, forKey: "wrapHour") } }
     @Published var nudges: Bool { didSet { d.set(nudges, forKey: "nudges") } }
+    @Published var bedtime: Bool { didSet { d.set(bedtime, forKey: "bedtime") } }
 
     static let windowStart = 9
     static let windowEnd = 18          // morning visits and nudges only happen before 6 PM
@@ -195,6 +196,7 @@ final class Settings: ObservableObject {
         wrapUp    = d.object(forKey: "wrapUp") as? Bool ?? true
         wrapHour  = d.object(forKey: "wrapHour") as? Int ?? 17
         nudges    = d.object(forKey: "nudges") as? Bool ?? true
+        bedtime   = d.object(forKey: "bedtime") as? Bool ?? true
     }
 }
 
@@ -606,6 +608,77 @@ final class NudgeScheduler {
             subtitle: "Nothing is due right now, so this is a preview. Click me!",
             accent: Palette.amber))
     }
+}
+
+// MARK: - Bedtime reminder
+
+/// From 10 PM to 6 AM, if the keyboard or mouse is still being used, Tick tells you to go to bed.
+/// Repeats every 30 minutes with increasingly firm messages.
+final class BedtimeScheduler {
+    static let interval: TimeInterval = 30 * 60
+    static let activeWithin: TimeInterval = 5 * 60     // "still working" = input in the last 5 minutes
+
+    private let settings: Settings
+    private let store: Store
+    private let d = UserDefaults.standard
+    private var timer: Timer?
+    var isBusy: () -> Bool = { false }
+    var onRemind: ((BubbleMessage) -> Void)?
+
+    init(settings: Settings, store: Store) {
+        self.settings = settings
+        self.store = store
+    }
+
+    func start() {
+        timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in self?.tick() }
+    }
+
+    static func isNight(_ date: Date = Date()) -> Bool {
+        let h = Calendar.current.component(.hour, from: date)
+        return h < 6 || h >= 22
+    }
+
+    /// Seconds since the last key press, click or mouse move (no special permission needed).
+    private static var idleSeconds: TimeInterval {
+        CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: CGEventType(rawValue: ~0)!)
+    }
+
+    /// A night runs from 10 PM until 6 AM, so shift back 6 hours to give 1 AM the same key as 11 PM.
+    private func nightKey() -> String { dayKey(Date().addingTimeInterval(-6 * 3600)) }
+
+    func tick() {
+        guard settings.bedtime, Self.isNight(), Self.idleSeconds < Self.activeWithin, !isBusy() else { return }
+        let now = Date().timeIntervalSince1970
+        guard now - d.double(forKey: "lastBedtime") >= Self.interval else { return }
+        let key = nightKey()
+        let count = d.string(forKey: "bedtimeNight") == key ? d.integer(forKey: "bedtimeCount") : 0
+        d.set(now, forKey: "lastBedtime")
+        d.set(key, forKey: "bedtimeNight")
+        d.set(count + 1, forKey: "bedtimeCount")
+        onRemind?(message(count: count))
+    }
+
+    /// The nth reminder tonight (0 = first) gets a firmer message.
+    func message(count: Int) -> BubbleMessage {
+        let f = DateFormatter()
+        f.dateFormat = "h:mm a"
+        let time = f.string(from: Date())
+        let open = store.openCount
+        let left = open == 0 ? "Nothing is open, so there is nothing to stay up for."
+                             : "\(plural(open, "task")) will still be here tomorrow. I promise."
+        let title: String, sub: String
+        switch count {
+        case 0:  (title, sub) = ("It's \(time). Bedtime!", left)
+        case 1:  (title, sub) = ("Still at it? I'm yawning.", left)
+        case 2:  (title, sub) = ("It's \(time). Seriously.", "Tired brains write buggy code. Sleep now, fix later.")
+        default: (title, sub) = ("Go to bed. Please.", "I'm falling asleep either way. Zzz.")
+        }
+        return BubbleMessage(kind: .nudge, title: title, subtitle: sub, accent: Color(red: 0.55, green: 0.5, blue: 0.9))
+    }
+
+    /// Shows the bedtime bubble right now to preview it.
+    func test() { onRemind?(message(count: 0)) }
 }
 
 /// One-time copy of settings saved under the old DeskTasks bundle id (com.arun.desktasks).

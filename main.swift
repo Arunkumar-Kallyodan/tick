@@ -149,6 +149,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     lazy var scheduler = VisitScheduler(settings: settings)
     lazy var visit = VisitController(store: store, scheduler: scheduler)
     lazy var nudges = NudgeScheduler(settings: settings, store: store)
+    lazy var bedtime = BedtimeScheduler(settings: settings, store: store)
     var mascot: FloatingPanel!
     var overlay: FloatingPanel!
     var listPanel: FloatingPanel!
@@ -226,6 +227,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         nudges.onNudge = { [weak self] msg in self?.showNudge(msg) }
         nudges.start()
 
+        // Bedtime reminder: sleepy Tick tells you to stop if you are still working after 10 PM.
+        bedtime.isBusy = { [weak self] in
+            guard let self = self else { return true }
+            return self.scheduler.visiting || self.ui.listOpen
+        }
+        bedtime.onRemind = { [weak self] msg in self?.showBedtime(msg) }
+        bedtime.start()
+
         // Celebrate finished tasks.
         store.onCompleted = { [weak self] _ in self?.celebrate() }
 
@@ -253,8 +262,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: Mood, nudges, celebrations
 
     private func updateMood() {
-        let h = Calendar.current.component(.hour, from: Date())
-        let sleepy = h < 6 || h >= 22
+        let sleepy = BedtimeScheduler.isNight()
         if ui.sleepy != sleepy { ui.sleepy = sleepy }
     }
 
@@ -280,6 +288,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard !scheduler.visiting else { return }
         mascot.orderFrontRegardless()
         showBubble(msg, alert: true, seconds: 8)
+    }
+
+    /// Stays in the sleepy pose (no alarmed look) and the bubble lasts a bit longer.
+    private func showBedtime(_ msg: BubbleMessage) {
+        guard !scheduler.visiting else { return }
+        mascot.orderFrontRegardless()
+        showBubble(msg, alert: false, seconds: 10)
     }
 
     private func celebrate() {
@@ -439,6 +454,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(withTitle: "Morning Visit Now", action: #selector(visitNow), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Evening Wrap-up Now", action: #selector(wrapNow), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Test Reminder", action: #selector(testNudgeFromMenu), keyEquivalent: "").target = self
+        menu.addItem(withTitle: "Test Bedtime Reminder", action: #selector(testBedtimeFromMenu), keyEquivalent: "").target = self
         loginItem = menu.addItem(withTitle: "Launch at Login", action: #selector(toggleLogin), keyEquivalent: "")
         loginItem.target = self
         menu.addItem(.separator())
@@ -469,6 +485,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func visitNow() { scheduler.visitNow(.morning) }
     @objc private func wrapNow() { scheduler.visitNow(.evening) }
     @objc private func testNudgeFromMenu() { testNudge() }
+    @objc private func testBedtimeFromMenu() { testBedtime() }
+
+    private func testBedtime() {
+        closeList()
+        bedtime.test()
+    }
 
     /// Previews the reminder now. The bubble stays hidden while the list is open, so close it first.
     private func testNudge() {

@@ -422,6 +422,9 @@ struct SettingsView: View {
                 Spacer()
                 Button("Test") { testNudge() }.font(.system(size: 11))
             }
+            Toggle("Tell me to go to bed after 10 PM", isOn: $settings.bedtime)
+                .toggleStyle(.checkbox)
+                .font(.system(size: 11))
         }
         .padding(10)
         .background(RoundedRectangle(cornerRadius: 9).fill(Color.white.opacity(0.06)))

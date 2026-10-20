@@ -86,6 +86,8 @@ Tick has moods:
 - **Relaxed:** nothing is open, so he hums happily. Hovering invites you to add a task, because he gets bored.
 - **Sleepy:** before 6 AM and after 10 PM he nods off. Take the hint.
 
+**Bedtime police.** If it's between 10 PM and 6 AM and you're *still* typing or clicking, a sleepy Tick pipes up with "It's 11:34 PM. Bedtime!" He reminds you at most every 30 minutes, and gets firmer each time ("Still at it? I'm yawning." ... "Tired brains write buggy code. Sleep now, fix later."). He only speaks up when there's been keyboard or mouse activity in the last 5 minutes, so an idle Mac gets to sleep in peace. No permissions needed. Turn it off with the checkbox in the settings.
+
 ### The task list
 
 - **Add a task:** type in the top field, pick P1, P2 or P3, press Return. Done. No forms, no wizard.
@@ -152,6 +154,7 @@ Click the gear icon in the task list header:
 - **Wrap-up from:** turn the wrap-up on or off and choose the hour (noon to 10 PM).
 - **Wrap up now:** starts the wrap-up straight away.
 - **Remind me about due and overdue tasks:** turns Tick's reminders on or off. Press **Test** to see one right now.
+- **Tell me to go to bed after 10 PM:** turns the bedtime reminders on or off. For people who think they don't need sleep.
 
 ### Menu bar icon
 
@@ -162,6 +165,7 @@ The checklist icon in the menu bar gives you:
 - **Morning Visit Now**
 - **Evening Wrap-up Now**
 - **Test Reminder:** shows the due-date reminder bubble right away, using a sample task if nothing is due
+- **Test Bedtime Reminder:** shows the bedtime bubble right away, at any hour
 - **Launch at Login:** a toggle. A tick means it's on.
 - **Quit Tick**
 
@@ -219,7 +223,7 @@ Re-run `./build.sh`. It stops the old copy and installs the new one.
 
 | File | Purpose |
 | --- | --- |
-| `Model.swift` | Task model, settings, task storage, the standup summary, and the visit and reminder schedulers |
+| `Model.swift` | Task model, settings, task storage, the standup summary, and the visit, reminder and bedtime schedulers |
 | `Views.swift` | All the screens: task list, Tick and his moods, speech bubbles, confetti, recap, review, plan and wrap-up screens |
 | `main.swift` | App startup, the corner mascot and its message overlay, the list panel, the walk-in animation and the menu bar |
 | `Snapshot.swift` | Renders the screens to PNG files so the design can be checked without a human clicking around |

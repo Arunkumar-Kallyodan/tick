@@ -434,13 +434,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem.button?.image = NSImage(systemSymbolName: "checklist", accessibilityDescription: "Tasks")
         let menu = NSMenu()
         menu.addItem(withTitle: "Open Task List", action: #selector(openFromMenu), keyEquivalent: "").target = self
+        menu.addItem(withTitle: "Copy Standup Summary", action: #selector(copyStandup), keyEquivalent: "c").target = self
+        menu.addItem(.separator())
         menu.addItem(withTitle: "Morning Visit Now", action: #selector(visitNow), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Evening Wrap-up Now", action: #selector(wrapNow), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Test Reminder", action: #selector(testNudgeFromMenu), keyEquivalent: "").target = self
         loginItem = menu.addItem(withTitle: "Launch at Login", action: #selector(toggleLogin), keyEquivalent: "")
         loginItem.target = self
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Quit DeskTasks", action: #selector(quit), keyEquivalent: "q").target = self
+        menu.addItem(withTitle: "Quit Tick", action: #selector(quit), keyEquivalent: "q").target = self
         statusItem.menu = menu
     }
 
@@ -451,6 +453,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func openFromMenu() {
         mascot.orderFrontRegardless()
         openList()
+    }
+
+    @objc private func copyStandup() {
+        let pb = NSPasteboard.general
+        pb.clearContents()
+        pb.setString(standupSummary(store.tasks), forType: .string)
+        closeList()
+        mascot.orderFrontRegardless()
+        showBubble(BubbleMessage(kind: .celebrate, title: "Copied!",
+                                 subtitle: "Standup summary is on your clipboard.",
+                                 accent: Palette.green), alert: false, seconds: 3)
     }
 
     @objc private func visitNow() { scheduler.visitNow(.morning) }
@@ -477,6 +490,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 if CommandLine.arguments.contains("--snapshot") {
     runSnapshots()
 } else {
+    migrateLegacyDefaults()
     let app = NSApplication.shared
     app.setActivationPolicy(.accessory)
     let delegate = AppDelegate()

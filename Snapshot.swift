@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 
 /// Renders the UI to PNGs so the visuals can be checked without screen-recording permission.
-/// Usage: DeskTasks --snapshot /output/dir
+/// Usage: Tick --snapshot /output/dir
 func runSnapshots() {
     snapshotMode = true
     _ = NSApplication.shared
@@ -12,7 +12,7 @@ func runSnapshots() {
     try? FileManager.default.createDirectory(at: outDir, withIntermediateDirectories: true)
 
     // Scratch store: never touches real data.
-    let tmp = FileManager.default.temporaryDirectory.appendingPathComponent("desktasks-snap-\(UUID().uuidString).json")
+    let tmp = FileManager.default.temporaryDirectory.appendingPathComponent("tick-snap-\(UUID().uuidString).json")
     let store = Store(file: tmp)
     let cal = Calendar.current
     func day(_ n: Int) -> Date? { cal.date(byAdding: .day, value: n, to: Date()) }
@@ -106,7 +106,7 @@ func runSnapshots() {
     // Corner mascot (idle, hover wave, no tasks) with its overlay: hover message, nudge, confetti.
     let ui = UIState()
     let hoverUI = UIState(); hoverUI.mascotHover = true
-    let emptyStore = Store(file: tmp.deletingLastPathComponent().appendingPathComponent("desktasks-empty-\(UUID().uuidString).json"))
+    let emptyStore = Store(file: tmp.deletingLastPathComponent().appendingPathComponent("tick-empty-\(UUID().uuidString).json"))
     render("mascot", CGSize(width: 360, height: 150),
            backdrop(360, 150, HStack(spacing: 30) {
                MascotView(store: store, ui: ui, corner: .bottomRight)

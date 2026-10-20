@@ -218,10 +218,16 @@ final class Store: ObservableObject {
         if let file = file {
             url = file
         } else {
-            let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-                .appendingPathComponent("DeskTasks", isDirectory: true)
+            let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            let dir = support.appendingPathComponent("Tick", isDirectory: true)
             try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
             url = dir.appendingPathComponent("tasks.json")
+            // The app used to be called DeskTasks. Copy (not move) its tasks over once.
+            let legacy = support.appendingPathComponent("DeskTasks/tasks.json")
+            if !FileManager.default.fileExists(atPath: url.path),
+               FileManager.default.fileExists(atPath: legacy.path) {
+                try? FileManager.default.copyItem(at: legacy, to: url)
+            }
         }
         if let data = try? Data(contentsOf: url) {
             let dec = JSONDecoder()
@@ -600,4 +606,55 @@ final class NudgeScheduler {
             subtitle: "Nothing is due right now, so this is a preview. Click me!",
             accent: Palette.amber))
     }
+}
+
+/// One-time copy of settings saved under the old DeskTasks bundle id (com.arun.desktasks).
+/// `didSetupLogin` is skipped so the renamed app registers its own login item.
+func migrateLegacyDefaults() {
+    let d = UserDefaults.standard
+    guard !d.bool(forKey: "migratedFromDeskTasks") else { return }
+    d.set(true, forKey: "migratedFromDeskTasks")
+    guard let old = d.persistentDomain(forName: "com.arun.desktasks") else { return }
+    for (key, value) in old where key != "didSetupLogin" && d.object(forKey: key) == nil {
+        d.set(value, forKey: key)
+    }
+}
+
+// MARK: - Standup summary
+
+/// Markdown summary for pasting into a standup or status update:
+/// what was finished in the last day, and what is still open (overdue first).
+func standupSummary(_ tasks: [TaskItem], now: Date = Date()) -> String {
+    let cal = Calendar.current
+    let since = cal.startOfDay(for: cal.date(byAdding: .day, value: -1, to: now) ?? now)
+
+    let finished = tasks.filter { $0.done && ($0.completedAt ?? .distantPast) >= since }
+        .sorted { ($0.completedAt ?? .distantPast) > ($1.completedAt ?? .distantPast) }
+    let open = tasks.filter { !$0.done }
+        .sorted { ($0.priority.rawValue, $0.due ?? .distantFuture) < ($1.priority.rawValue, $1.due ?? .distantFuture) }
+
+    func line(_ t: TaskItem) -> String {
+        var parts = ["- [\(t.done ? "x" : " ")] \(t.priority.short) \(t.title)"]
+        if !t.done {
+            if t.progress > 0 { parts.append("(\(Int((t.progress * 100).rounded()))%)") }
+            if !t.subtasks.isEmpty { parts.append("[\(t.doneSubtasks)/\(t.subtasks.count) steps]") }
+            if let info = dueInfo(t), let due = t.due {
+                let overdue = cal.startOfDay(for: due) < cal.startOfDay(for: now)
+                parts.append(overdue ? "— OVERDUE (\(info.text))" : "— due \(info.text)")
+            }
+        }
+        var out = parts.joined(separator: " ")
+        let note = t.notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !note.isEmpty {
+            out += "\n" + note.split(separator: "\n").map { "  > \($0)" }.joined(separator: "\n")
+        }
+        return out
+    }
+
+    let f = DateFormatter()
+    f.dateFormat = "EEE d MMM yyyy"
+    var s = "## Status — \(f.string(from: now))\n"
+    s += "\n### Done\n" + (finished.isEmpty ? "- (nothing yet)\n" : finished.map(line).joined(separator: "\n") + "\n")
+    s += "\n### In progress / open\n" + (open.isEmpty ? "- (nothing open)\n" : open.map(line).joined(separator: "\n") + "\n")
+    return s
 }

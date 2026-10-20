@@ -1,4 +1,4 @@
-# DeskTasks
+# Tick
 
 A small macOS app that keeps your tasks on screen as a character called **Tick**.
 
@@ -40,8 +40,8 @@ From this folder, run:
 
 This script:
 
-1. Stops any running copy of DeskTasks.
-2. Compiles the source files into `~/Applications/DeskTasks.app`.
+1. Stops any running copy of Tick.
+2. Compiles the source files into `~/Applications/Tick.app`.
 3. Signs the app locally (ad hoc, no Apple developer account needed).
 4. Launches it.
 
@@ -55,7 +55,7 @@ Run `./build.sh` again any time you change the code. It replaces the installed a
 
 ### Start it later
 
-Open `~/Applications/DeskTasks.app` from Finder or Spotlight. The app has no Dock icon. Look for Tick in a screen corner and the checklist icon in the menu bar.
+Open `~/Applications/Tick.app` from Finder or Spotlight. The app has no Dock icon. Look for Tick in a screen corner and the checklist icon in the menu bar.
 
 ## First launch
 
@@ -152,39 +152,40 @@ Click the gear icon in the task list header:
 The checklist icon in the menu bar has:
 
 - **Open Task List**
+- **Copy Standup Summary** (⌘C in the menu): copies a Markdown status update to the clipboard. It lists what you finished since yesterday and everything still open, sorted by priority, with progress, checklist counts, due dates (overdue ones flagged) and your notes. Paste it into Slack, an email or a standup doc.
 - **Morning Visit Now**
 - **Evening Wrap-up Now**
 - **Test Reminder:** shows the due-date reminder bubble right away, using a sample task if nothing is due
 - **Launch at Login:** a toggle. A tick means it is on.
-- **Quit DeskTasks**
+- **Quit Tick**
 
 ## Where your data is stored
 
 | What | Location |
 | --- | --- |
-| Tasks | `~/Library/Application Support/DeskTasks/tasks.json` |
-| Settings and window state | macOS user defaults, domain `com.arun.desktasks` |
+| Tasks | `~/Library/Application Support/Tick/tasks.json` |
+| Settings and window state | macOS user defaults, domain `com.arun.tick` |
 
 The tasks file is plain JSON. To back it up, copy that file. To start fresh, quit the app and delete it. Changes are saved a moment after you stop typing, and always when the app quits.
 
 ## Uninstall
 
 ```bash
-pkill -x DeskTasks
-rm -rf ~/Applications/DeskTasks.app
-rm -rf ~/Library/Application\ Support/DeskTasks
-defaults delete com.arun.desktasks
+pkill -x Tick
+rm -rf ~/Applications/Tick.app
+rm -rf ~/Library/Application\ Support/Tick
+defaults delete com.arun.tick
 ```
 
-Also remove DeskTasks from *System Settings → General → Login Items* if it is still listed.
+Also remove Tick from *System Settings → General → Login Items* if it is still listed.
 
 ## Troubleshooting
 
 **Nothing appears after `./build.sh`**
-Check that the app is running with `pgrep -lx DeskTasks`. If it is not, run the binary directly to see any error messages:
+Check that the app is running with `pgrep -lx Tick`. If it is not, run the binary directly to see any error messages:
 
 ```bash
-~/Applications/DeskTasks.app/Contents/MacOS/DeskTasks
+~/Applications/Tick.app/Contents/MacOS/Tick
 ```
 
 **The build fails with compiler errors**
@@ -219,9 +220,9 @@ Re-run `./build.sh`. It stops the old copy and installs the new one.
 The app can render its screens to image files. This does not need screen-recording permission and does not touch your real tasks:
 
 ```bash
-swiftc -O Model.swift Views.swift Snapshot.swift main.swift -o /tmp/desktasks-snap
-/tmp/desktasks-snap --snapshot /tmp/desktasks-out
-open /tmp/desktasks-out
+swiftc -O Model.swift Views.swift Snapshot.swift main.swift -o /tmp/tick-snap
+/tmp/tick-snap --snapshot /tmp/tick-out
+open /tmp/tick-out
 ```
 
 This writes the task list, task rows, the mascot and its bubbles, the character moods and each step of the visits.

@@ -91,7 +91,7 @@ Tick has moods:
 ### The task list
 
 - **Add a task:** type in the top field, pick P1, P2 or P3, press Return. Done. No forms, no wizard.
-- **Complete a task:** click the circle on the left. Progress jumps to 100% and the task moves to the archive straight away. Very satisfying.
+- **Complete a task:** click the circle on the left. If the task is already at 100%, it goes straight to the archive. If it isn't, Tick asks "Only 75% done. Finish it?" first, because he knows you. Press **Done** to complete it (progress jumps to 100%) or **Not yet** to keep it open. Very satisfying either way.
 - **Set progress:** drag across the progress bar. It snaps to 5% steps. Hitting 100% marks the task done.
 - **Change priority:** click the P1/P2/P3 chip (it has a small arrow) and pick from the dropdown. The current one is ticked. Everything is P1 when you're stressed. Resist.
 - **Set a due date:** click the date chip, then pick a date, or use Today, Tomorrow or Clear.

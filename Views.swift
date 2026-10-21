@@ -122,23 +122,32 @@ struct TaskRow: View {
     @State private var showNotes: Bool
     @State private var showSteps: Bool
     @State private var confirmDelete: Bool
+    @State private var confirmDone: Bool
     @State private var newStep = ""
 
     /// The `…Open` / `confirming` arguments only exist so the snapshot tool can render those states.
     init(task: Binding<TaskItem>, notesOpen: Bool = false, stepsOpen: Bool = false,
-         confirming: Bool = false, onDelete: @escaping () -> Void) {
+         confirming: Bool = false, confirmingDone: Bool = false, onDelete: @escaping () -> Void) {
         _task = task
         self.onDelete = onDelete
         _showNotes = State(initialValue: notesOpen)
         _showSteps = State(initialValue: stepsOpen)
         _confirmDelete = State(initialValue: confirming)
+        _confirmDone = State(initialValue: confirmingDone)
     }
 
     private var hasNotes: Bool { !task.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
-            Button { task.toggleDone() } label: {
+            Button {
+                // Finishing a task that is not at 100% asks first. Reopening a done one does not.
+                if !task.done && task.progress < 1 {
+                    withAnimation(.easeInOut(duration: 0.15)) { confirmDone = true; confirmDelete = false }
+                } else {
+                    task.toggleDone()
+                }
+            } label: {
                 Image(systemName: task.done ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 18))
                     .foregroundColor(task.done ? Palette.green : task.priority.color)
@@ -178,10 +187,11 @@ struct TaskRow: View {
                         .onTapGesture { withAnimation(.easeInOut(duration: 0.15)) { showNotes = true } }
                 }
 
+                if confirmDone && !task.done { doneBar }
                 if confirmDelete { confirmBar }
             }
 
-            Button { withAnimation(.easeInOut(duration: 0.15)) { confirmDelete = true } } label: {
+            Button { withAnimation(.easeInOut(duration: 0.15)) { confirmDelete = true; confirmDone = false } } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 9, weight: .bold))
                     .foregroundColor(.secondary)
@@ -296,6 +306,35 @@ struct TaskRow: View {
         .padding(8)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 8).fill(Color.black.opacity(0.22)))
+        .padding(.top, 2)
+    }
+
+    // Asks before marking a task done when it is not at 100% yet.
+    private var doneBar: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "checkmark.circle.fill").font(.system(size: 11)).foregroundColor(Palette.green)
+            Text("Only \(Int((task.progress * 100).rounded()))% done. Finish it?")
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 4)
+            Button("Not yet") { withAnimation(.easeInOut(duration: 0.15)) { confirmDone = false } }
+                .buttonStyle(.plain)
+                .font(.system(size: 12, design: .rounded))
+                .foregroundColor(.secondary)
+            Button {
+                confirmDone = false
+                task.toggleDone()
+            } label: {
+                Text("Done")
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundColor(.black)
+                    .padding(.horizontal, 10).padding(.vertical, 3)
+                    .background(Capsule().fill(Palette.green))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 9).padding(.vertical, 6)
+        .background(RoundedRectangle(cornerRadius: 8).fill(Palette.green.opacity(0.14)))
         .padding(.top, 2)
     }
 

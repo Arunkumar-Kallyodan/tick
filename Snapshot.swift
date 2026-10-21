@@ -80,8 +80,10 @@ func runSnapshots() {
     // Task rows: checklist open, delete confirmation.
     var checklistTask = store.tasks[1]
     var confirmTask = store.tasks[0]
-    render("row_states", CGSize(width: 400, height: 330),
-           backdrop(400, 330, VStack(spacing: 10) {
+    var doneTask = store.tasks[3]
+    render("row_states", CGSize(width: 400, height: 450),
+           backdrop(400, 450, VStack(spacing: 10) {
+               TaskRow(task: Binding(get: { doneTask }, set: { doneTask = $0 }), confirmingDone: true, onDelete: {})
                TaskRow(task: Binding(get: { checklistTask }, set: { checklistTask = $0 }), stepsOpen: true, onDelete: {})
                TaskRow(task: Binding(get: { confirmTask }, set: { confirmTask = $0 }), confirming: true, onDelete: {})
            }.padding(.horizontal, 20)))

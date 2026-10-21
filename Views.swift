@@ -118,6 +118,7 @@ struct TaskRow: View {
     let onDelete: () -> Void
     @State private var hover = false
     @State private var showDate = false
+    @State private var showPriority = false
     @State private var showNotes: Bool
     @State private var showSteps: Bool
     @State private var confirmDelete: Bool
@@ -210,14 +211,18 @@ struct TaskRow: View {
     // Priority, due date, notes and checklist toggles.
     private var chips: some View {
         HStack(spacing: 6) {
-            // Click to cycle P1 -> P2 -> P3 (a Menu would override the chip colours).
-            Button {
-                task.priority = Priority(rawValue: (task.priority.rawValue + 1) % 3) ?? .high
-            } label: {
-                Chip(text: task.priority.short, color: task.priority.color, icon: "flag.fill")
+            // Dropdown with the three priorities (a native Menu would override the chip colours).
+            Button { showPriority.toggle() } label: {
+                HStack(spacing: 2) {
+                    Chip(text: task.priority.short, color: task.priority.color, icon: "flag.fill")
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 7, weight: .bold))
+                        .foregroundColor(task.priority.color.opacity(0.8))
+                }
             }
             .buttonStyle(.plain)
-            .help("Click to change priority")
+            .help("Change priority")
+            .popover(isPresented: $showPriority, arrowEdge: .bottom) { priorityPopover }
 
             Button { showDate.toggle() } label: {
                 if let info = dueInfo(task) {
@@ -317,6 +322,32 @@ struct TaskRow: View {
         .padding(.horizontal, 9).padding(.vertical, 6)
         .background(RoundedRectangle(cornerRadius: 8).fill(Palette.red.opacity(0.14)))
         .padding(.top, 2)
+    }
+
+    private var priorityPopover: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            ForEach(Priority.allCases, id: \.self) { p in
+                Button {
+                    task.priority = p
+                    showPriority = false
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "flag.fill").foregroundColor(p.color).frame(width: 14)
+                        Text("\(p.short) · \(p.name)").font(.system(size: 12, design: .rounded))
+                        Spacer(minLength: 12)
+                        if p == task.priority {
+                            Image(systemName: "checkmark").font(.system(size: 10, weight: .bold)).foregroundColor(p.color)
+                        }
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(6)
+        .frame(width: 150)
     }
 
     private var datePopover: some View {

@@ -93,7 +93,7 @@ Tick has moods:
 - **Add a task:** type in the top field, pick P1, P2 or P3, press Return. Done. No forms, no wizard.
 - **Complete a task:** click the circle on the left. Progress jumps to 100% and the task moves to the archive straight away. Very satisfying.
 - **Set progress:** drag across the progress bar. It snaps to 5% steps. Hitting 100% marks the task done.
-- **Change priority:** click the P1/P2/P3 chip to cycle through. Everything is P1 when you're stressed. Resist.
+- **Change priority:** click the P1/P2/P3 chip (it has a small arrow) and pick from the dropdown. The current one is ticked. Everything is P1 when you're stressed. Resist.
 - **Set a due date:** click the date chip, then pick a date, or use Today, Tomorrow or Clear.
 - **Add notes:** click the **Notes** chip and write what's done and what's pending. Click it again to hide the box. Tasks with notes get a blue chip and a two-line preview, so future-you can see where past-you left off. You can also edit notes during the morning review.
 - **Edit the title:** click the task text and type.

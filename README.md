@@ -75,6 +75,7 @@ Open `~/Applications/Tick.app` from Finder or Spotlight. He has no Dock icon (he
 | --- | --- |
 | Hover over him | Waves and says "You have N tasks going on. Click me to view them." If some are overdue or due today, a red chip says how many |
 | Click him | Opens the task list next to him |
+| Drag him | Moves him anywhere on the screen. He remembers the spot, even after a restart |
 | Click him again, or hit the ✕ in the list | Closes the list |
 
 The badge counts your open tasks. **Red** means something is overdue or due today. **Blue** means you're fine. For now.
@@ -148,7 +149,7 @@ He won't interrupt while the list is open or a visit is in progress. To preview 
 Click the gear icon in the task list header:
 
 - **Opacity slider:** from 20% to 100%. For when Tick is too present.
-- **Tick lives in:** bottom right, bottom left, top right or top left. Pick a corner. He'll move in.
+- **Tick lives in:** bottom right, bottom left, top right or top left. Pick a corner. He'll move in. If you've dragged him somewhere else, a **Reset** button appears to put him back in the chosen corner.
 - **Morning visit from:** the earliest hour for the visit, between 9 AM and 5 PM. The visit only happens before 6 PM.
 - **Visit now:** starts the morning visit straight away.
 - **Wrap-up from:** turn the wrap-up on or off and choose the hour (noon to 10 PM).

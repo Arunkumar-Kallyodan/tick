@@ -15,6 +15,59 @@ final class FirstClickHostingView<V: View>: NSHostingView<V> {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }
 
+/// Tick's own view: a click opens the list, dragging moves him anywhere on screen.
+final class DraggableHostingView<V: View>: NSHostingView<V> {
+    var onClick: () -> Void = {}
+    var onDragBegan: () -> Void = {}
+    var onDragMoved: () -> Void = {}
+    var onDragEnded: () -> Void = {}
+
+    private var downAt = NSPoint.zero
+    private var dragging = false
+    private static var threshold: CGFloat { 4 }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    override func mouseDown(with event: NSEvent) {
+        downAt = NSEvent.mouseLocation
+        dragging = false
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        let m = NSEvent.mouseLocation
+        if !dragging {
+            guard hypot(m.x - downAt.x, m.y - downAt.y) >= Self.threshold else { return }
+            dragging = true
+            NSCursor.closedHand.push()
+            onDragBegan()
+        }
+        onDragMoved()
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        if dragging {
+            NSCursor.pop()
+            dragging = false
+            onDragEnded()
+        } else {
+            onClick()
+        }
+    }
+}
+
+/// The mascot and overlay read the current side from `ui` so they can flip while Tick is dragged.
+struct MascotRoot: View {
+    @ObservedObject var store: Store
+    @ObservedObject var ui: UIState
+    var body: some View { MascotView(store: store, ui: ui, corner: ui.corner) }
+}
+
+struct OverlayRoot: View {
+    @ObservedObject var store: Store
+    @ObservedObject var ui: UIState
+    var body: some View { MascotOverlayView(store: store, ui: ui, corner: ui.corner) }
+}
+
 // MARK: - Visit controller (character walks in, asks, walks out)
 
 final class VisitController {
@@ -161,6 +214,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var loginItem: NSMenuItem!
     var hoverTimer: Timer?
     var cornerObserver: Any?
+    var cornerResetObserver: Any?
+    var dragStartMouse = NSPoint.zero
+    var dragStartOrigin = NSPoint.zero
 
     private let listSize = NSSize(width: 360, height: 500)
 
@@ -187,8 +243,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ n: Notification) {
         setupEditMenu()
-        setupOverlay()
         setupMascot()
+        setupOverlay()
         setupListPanel()
         setupStatusItem()
 
@@ -200,10 +256,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if self.ui.mascotHover != inside { self.ui.mascotHover = inside }
         }
 
-        // Move the mascot when the corner setting changes.
-        cornerObserver = settings.$corner.dropFirst().sink { [weak self] _ in
-            DispatchQueue.main.async { self?.placeMascot(); self?.placeOverlay(); self?.placeList() }
-        }
+        // Move the mascot when the corner setting changes, or when it is dragged / reset.
+        // Choosing a corner in the settings clears any dragged position.
+        cornerResetObserver = settings.$corner.dropFirst().sink { [weak self] _ in self?.settings.customPos = nil }
+        cornerObserver = settings.$corner.dropFirst().map { _ in () }
+            .merge(with: settings.$customPos.dropFirst().map { _ in () })
+            .sink { [weak self] in
+                DispatchQueue.main.async { self?.placeMascot(); self?.placeOverlay(); self?.placeList() }
+            }
 
         visit.onBegin = { [weak self] in
             self?.closeList()
@@ -334,14 +394,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func placeOverlay() {
-        let f = screenFrame
-        let m = MascotMetrics.margin
-        let c = settings.corner
-        let x = c.isRight ? f.maxX - OverlayMetrics.size.width - m : f.minX + m
-        let y = c.isTop ? f.maxY - OverlayMetrics.size.height - m : f.minY + m
-        overlay.setFrameOrigin(NSPoint(x: x, y: y))
-        overlay.contentView = NSHostingView(rootView:
-            MascotOverlayView(store: store, ui: ui, corner: c))
+        overlay.setFrameOrigin(overlayOrigin(mascotOrigin: mascot.frame.origin, corner: ui.corner))
+        if !(overlay.contentView is NSHostingView<OverlayRoot>) {
+            overlay.contentView = NSHostingView(rootView: OverlayRoot(store: store, ui: ui))
+        }
+    }
+
+    /// The overlay lines up with the mascot's edge nearest the screen edge, and grows toward the screen centre.
+    private func overlayOrigin(mascotOrigin o: NSPoint, corner c: Corner) -> NSPoint {
+        let mf = NSRect(origin: o, size: MascotMetrics.size)
+        return NSPoint(x: c.isRight ? mf.maxX - OverlayMetrics.size.width : mf.minX,
+                       y: c.isTop ? mf.maxY - OverlayMetrics.size.height : mf.minY)
     }
 
     private func setupMascot() {
@@ -364,21 +427,82 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.orderFrontRegardless()
     }
 
-    private func placeMascot() {
+    /// Free area for the mascot's origin when dragging.
+    private var dragArea: NSRect {
+        let f = screenFrame, e: CGFloat = 2
+        return NSRect(x: f.minX + e, y: f.minY + e,
+                      width: max(1, f.width - MascotMetrics.size.width - 2 * e),
+                      height: max(1, f.height - MascotMetrics.size.height - 2 * e))
+    }
+
+    private func mascotOrigin() -> NSPoint {
+        if let p = settings.customPos {
+            let a = dragArea
+            return NSPoint(x: a.minX + min(max(p.x, 0), 1) * a.width, y: a.minY + min(max(p.y, 0), 1) * a.height)
+        }
         let f = screenFrame
         let m = MascotMetrics.margin
         let c = settings.corner
-        let x = c.isRight ? f.maxX - MascotMetrics.size.width - m : f.minX + m
-        let y = c.isTop ? f.maxY - MascotMetrics.size.height - m : f.minY + m
-        mascot.setFrameOrigin(NSPoint(x: x, y: y))
-        // Re-create the root so the character faces into the screen.
-        let root = MascotView(store: store, ui: ui, corner: c)
-        let host = FirstClickHostingView(rootView: root.onTapGesture { [weak self] in
-            self?.clearBubble()
-            self?.toggleList()
-        })
-        host.sizingOptions = []
-        mascot.contentView = host
+        return NSPoint(x: c.isRight ? f.maxX - MascotMetrics.size.width - m : f.minX + m,
+                       y: c.isTop ? f.maxY - MascotMetrics.size.height - m : f.minY + m)
+    }
+
+    /// Which half of the screen Tick is in decides which way he faces and where bubbles and the list open.
+    private func cornerFor(_ o: NSPoint) -> Corner {
+        let f = screenFrame
+        let right = o.x + MascotMetrics.size.width / 2 > f.midX
+        let top = o.y + MascotMetrics.size.height / 2 > f.midY
+        switch (right, top) {
+        case (true, false): return .bottomRight
+        case (false, false): return .bottomLeft
+        case (true, true): return .topRight
+        case (false, true): return .topLeft
+        }
+    }
+
+    private func placeMascot() {
+        let o = mascotOrigin()
+        mascot.setFrameOrigin(o)
+        let c = cornerFor(o)
+        if ui.corner != c { ui.corner = c }
+        if !(mascot.contentView is DraggableHostingView<MascotRoot>) {
+            let host = DraggableHostingView(rootView: MascotRoot(store: store, ui: ui))
+            host.sizingOptions = []
+            host.toolTip = "Click to open your tasks. Drag to move me."
+            host.onClick = { [weak self] in
+                self?.clearBubble()
+                self?.toggleList()
+            }
+            host.onDragBegan = { [weak self] in
+                guard let self = self else { return }
+                self.dragStartMouse = NSEvent.mouseLocation
+                self.dragStartOrigin = self.mascot.frame.origin
+                self.clearBubble()
+            }
+            host.onDragMoved = { [weak self] in self?.dragMoved() }
+            host.onDragEnded = { [weak self] in self?.dragEnded() }
+            mascot.contentView = host
+        }
+    }
+
+    // MARK: Dragging
+
+    private func dragMoved() {
+        let m = NSEvent.mouseLocation
+        let a = dragArea
+        let o = NSPoint(x: min(max(dragStartOrigin.x + m.x - dragStartMouse.x, a.minX), a.maxX),
+                        y: min(max(dragStartOrigin.y + m.y - dragStartMouse.y, a.minY), a.maxY))
+        mascot.setFrameOrigin(o)
+        let c = cornerFor(o)
+        if ui.corner != c { ui.corner = c }
+        overlay.setFrameOrigin(overlayOrigin(mascotOrigin: o, corner: c))
+        if listPanel.isVisible { placeList() }
+    }
+
+    /// Remembers the spot as fractions of the screen so it survives a different display size.
+    private func dragEnded() {
+        let a = dragArea, o = mascot.frame.origin
+        settings.customPos = CGPoint(x: (o.x - a.minX) / a.width, y: (o.y - a.minY) / a.height)
     }
 
     // MARK: Task list
@@ -412,7 +536,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let f = screenFrame
         let mf = mascot.frame
         let gap: CGFloat = 8
-        let c = settings.corner
+        let c = ui.corner
         let x = c.isRight ? mf.maxX - listSize.width : mf.minX
         var y = c.isTop ? mf.minY - gap - listSize.height : mf.maxY + gap
         y = min(max(y, f.minY + 8), f.maxY - listSize.height - 8)

@@ -178,6 +178,16 @@ final class Settings: ObservableObject {
     @Published var opacity: Double { didSet { d.set(opacity, forKey: "opacity") } }
     @Published var visitHour: Int { didSet { d.set(visitHour, forKey: "visitHour") } }
     @Published var corner: Corner { didSet { d.set(corner.rawValue, forKey: "corner") } }
+    /// Where Tick was dragged to, as 0...1 fractions of the free area of the main screen. nil = use `corner`.
+    @Published var customPos: CGPoint? {
+        didSet {
+            if let p = customPos {
+                d.set(Double(p.x), forKey: "posX"); d.set(Double(p.y), forKey: "posY"); d.set(true, forKey: "hasPos")
+            } else {
+                d.set(false, forKey: "hasPos")
+            }
+        }
+    }
     @Published var wrapUp: Bool { didSet { d.set(wrapUp, forKey: "wrapUp") } }
     @Published var wrapHour: Int { didSet { d.set(wrapHour, forKey: "wrapHour") } }
     @Published var nudges: Bool { didSet { d.set(nudges, forKey: "nudges") } }
@@ -193,6 +203,7 @@ final class Settings: ObservableObject {
         opacity   = d.object(forKey: "opacity") as? Double ?? 0.92
         visitHour = d.object(forKey: "visitHour") as? Int ?? 9
         corner    = Corner(rawValue: d.integer(forKey: "corner")) ?? .bottomRight
+        customPos = d.bool(forKey: "hasPos") ? CGPoint(x: d.double(forKey: "posX"), y: d.double(forKey: "posY")) : nil
         wrapUp    = d.object(forKey: "wrapUp") as? Bool ?? true
         wrapHour  = d.object(forKey: "wrapHour") as? Int ?? 17
         nudges    = d.object(forKey: "nudges") as? Bool ?? true
@@ -392,6 +403,7 @@ struct BubbleMessage: Identifiable {
 /// UI state shared between the corner mascot, its speech bubble and the list panel.
 final class UIState: ObservableObject {
     @Published var listOpen = false
+    @Published var corner: Corner = .bottomRight   // which side of the screen Tick is on right now
     @Published var mascotHover = false
     @Published var sleepy = false           // late at night
     @Published var celebrating = false      // just finished something

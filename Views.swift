@@ -460,6 +460,11 @@ struct SettingsView: View {
                 }
                 .labelsHidden()
                 .frame(width: 120)
+                if settings.customPos != nil {
+                    Button("Reset") { settings.customPos = nil }
+                        .font(.system(size: 11))
+                        .help("Put Tick back in the chosen corner")
+                }
                 Spacer()
             }
             HStack(spacing: 6) {
